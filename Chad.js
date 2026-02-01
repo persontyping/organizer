@@ -1,3 +1,53 @@
+/*******************************************************
+ * Chad.gs
+ * Business logic only:
+ * - Subject flags → meaning
+ * - Type routing
+ * - IG drafting (template vs AI)
+ * - Body overrides parsing
+ *******************************************************/
+
+// Requires Helpers.gs to provide:
+// - extractBracketTags_(subject)
+// - unique_(arr)
+
+/************ FLAGS ************/
+function chadParseFlags_(subjectRaw) {
+  const tags = extractBracketTags_(subjectRaw).map(t => t.toUpperCase());
+
+  return {
+    tags,
+    isBook: tags.includes("B"),
+    isPolitical: tags.includes("P"),
+    isFast: tags.includes("FAST"),
+    isStoryOnly: tags.includes("STORY"),
+    isDraftOnly: tags.includes("DRAFT"),
+    isTest: tags.includes("TEST"),
+  };
+}
+
+/************ TYPE RESOLUTION ************/
+function chadEffectiveType_(inferredType, overridesType, flags) {
+  if (overridesType) return overridesType;
+  if (flags.isPolitical) return "POLITICAL";
+  if (flags.isBook) return "BOOK";
+  return inferredType || "THING";
+}
+
+/************ ENTRY POINT ************/
+function chadBuildIGDraft_(type, title, author, link, notes, flags) {
+  const t = String(type || "").toLowerCase();
+
+  if (t.includes("polit")) {
+    try {
+      return buildIGDraftWithAI_(type, title, author, link, notes, { fast: !!flags?.isFast });
+    } catch (e) {
+      return buildIGDraft_(type, title, author, link, notes);
+    }
+  }
+
+  return buildIGDraft_(type, title, author, link, notes);
+}
 
 /************ AI drafting for news/politics ************/
 function buildIGDraftWithAI_(type, title, author, link, notes, options) {
@@ -31,7 +81,6 @@ Return ONLY valid JSON:
   try {
     data = JSON.parse(raw);
   } catch (e) {
-    // fallback to template if AI returns non-JSON
     return buildIGDraft_(type, title, author, link, notes);
   }
 
@@ -48,8 +97,7 @@ Return ONLY valid JSON:
   };
 }
 
-
-/************ Non-AI parsing and relevance checks ************/
+/************ Template (non-AI) drafting ************/
 function buildIGDraft_(type, title, author, link, notes) {
   const t = (type || "Thing").toLowerCase();
 
@@ -57,7 +105,6 @@ function buildIGDraft_(type, title, author, link, notes) {
   let hashtags = [];
 
   if (t.includes("book")) {
-    // ✅ keep your existing book formatting
     caption = [
       `📚 ${title}${author ? ` — ${author}` : ""}`,
       ``,
@@ -74,12 +121,11 @@ function buildIGDraft_(type, title, author, link, notes) {
     ];
 
   } else if (t.includes("polit")) {
-    // 🟥 new political default
     caption = [
       `🟥 ${title}`,
       ``,
       `A quick local take:`,
-      notes ? `\n• ${notes}` : `\n• (Add a one-liner on why this matters locally)`,
+      notes ? `\n• ${notes}` : `\n• Why this matters locally`,
       ``,
       `If this affects you, I’d like to hear your experience.`,
     ].join("\n").trim();
@@ -94,7 +140,6 @@ function buildIGDraft_(type, title, author, link, notes) {
     ];
 
   } else {
-    // ✅ keep your existing generic formatting
     caption = [
       `✨ ${title}`,
       ``,
@@ -113,9 +158,7 @@ function buildIGDraft_(type, title, author, link, notes) {
   };
 }
 
-
-
-/************ PARSING ************/
+/************ BODY OVERRIDES ************/
 function parseOverrides_(body) {
   const lines = String(body || "").split("\n");
   const out = { type: "", title: "", author: "", notes: "" };
@@ -134,4 +177,3 @@ function parseOverrides_(body) {
 
   return out;
 }
-

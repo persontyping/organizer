@@ -1,16 +1,44 @@
 /**
+ * PackDoc.gs
+ *
  * Creates (or copies from template) a Google Doc into packFolder,
- * writes minimal text, and embeds the optional imageBlob inline.
+ * writes minimal content, and embeds optional images inline.
+ *
+ * Supports BOTH call signatures (backward compatible):
+ *   createPackDoc_(packFolder, title, ig, metaObj, imageEntries)
+ *   createPackDoc_(CFG, packFolder, title, ig, metaObj, imageEntries)
  *
  * Returns: { fileId, url }
  */
-function createPackDoc_(packFolder, title, ig, metaObj, imageEntries) {
+function createPackDoc_() {
+  // ---- Support both signatures
+  let cfg, packFolder, title, ig, metaObj, imageEntries;
+
+  if (arguments.length === 6 && typeof arguments[0] === "object") {
+    cfg = arguments[0];
+    packFolder = arguments[1];
+    title = arguments[2];
+    ig = arguments[3];
+    metaObj = arguments[4];
+    imageEntries = arguments[5];
+  } else {
+    // Legacy signature: (packFolder, title, ig, metaObj, imageEntries)
+    cfg = (typeof CFG !== "undefined") ? CFG : null;
+    packFolder = arguments[0];
+    title = arguments[1];
+    ig = arguments[2];
+    metaObj = arguments[3];
+    imageEntries = arguments[4];
+  }
+
+  if (!packFolder) throw new Error("createPackDoc_: packFolder is required");
+
   const safeTitle = safeFilename_(title || "Pack");
   let docId, docUrl;
 
-  // 1) Create/copy doc
-  if (CFG.docTemplateId) {
-    const copy = DriveApp.getFileById(CFG.docTemplateId)
+  // ---- 1) Create/copy doc
+  if (cfg && cfg.docTemplateId) {
+    const copy = DriveApp.getFileById(cfg.docTemplateId)
       .makeCopy(`${safeTitle} - Notes`, packFolder);
     docId = copy.getId();
     docUrl = copy.getUrl();
@@ -22,27 +50,36 @@ function createPackDoc_(packFolder, title, ig, metaObj, imageEntries) {
     // Move new doc into pack folder
     const file = DriveApp.getFileById(docId);
     packFolder.addFile(file);
-    DriveApp.getRootFolder().removeFile(file);
+
+    // Root removal can fail on shared drives; ignore if so
+    try {
+      DriveApp.getRootFolder().removeFile(file);
+    } catch (e) {}
   }
 
-  // 2) Write minimal content
+  // Optional: Drive sometimes lags right after copy/create
+  try { waitForDriveFile_(docId, 8000); } catch (e) {}
+
+  // ---- 2) Write minimal content
   const doc = DocumentApp.openById(docId);
   const body = doc.getBody();
 
   // If you want to keep template content, remove this line:
   body.clear();
 
-  // Minimal formatting: just one slightly-emphasized title
+  // Title
   body.appendParagraph(metaObj?.title || title || "(Untitled)").setBold(true);
-  body.appendParagraph(""); // spacer
+  body.appendParagraph("");
 
-  // Metadata (plain text)
-  body.appendParagraph(`Type: ${metaObj?.type || ""}`.trim());
+  // Metadata
+  const typeLine = `Type: ${metaObj?.type || ""}`.trim();
+  if (typeLine !== "Type:") body.appendParagraph(typeLine);
+
   if (metaObj?.authorOrBrand) body.appendParagraph(`Author/Brand: ${metaObj.authorOrBrand}`);
   if (metaObj?.link) body.appendParagraph(`Link: ${metaObj.link}`);
   if (metaObj?.createdAt) body.appendParagraph(`Created: ${metaObj.createdAt}`);
   if (metaObj?.sourceAttachmentUrl) body.appendParagraph(`Source file: ${metaObj.sourceAttachmentUrl}`);
-  body.appendParagraph(""); // spacer
+  body.appendParagraph("");
 
   // Notes
   if (metaObj?.notes) {
@@ -64,16 +101,24 @@ function createPackDoc_(packFolder, title, ig, metaObj, imageEntries) {
     body.appendParagraph("");
   }
 
-  // 3) Insert an array of images
+  // ---- 3) Insert images (array)
   if (Array.isArray(imageEntries) && imageEntries.length) {
     body.appendParagraph("Images:");
 
+    const MAX_W = 500;
+
     imageEntries.forEach((img, i) => {
-      const p = body.appendParagraph(`Image ${i + 1}`);
+      body.appendParagraph(`Image ${i + 1}`);
+
+      if (!img || !img.blob) {
+        body.appendParagraph("(missing image blob)");
+        body.appendParagraph("");
+        return;
+      }
+
       const el = body.appendImage(img.blob);
 
-      // scale to page width (aspect ratio locked)
-      const MAX_W = 500;
+      // scale to MAX_W (aspect ratio locked)
       const w = el.getWidth();
       const h = el.getHeight();
       if (w > MAX_W) {
@@ -81,6 +126,8 @@ function createPackDoc_(packFolder, title, ig, metaObj, imageEntries) {
         el.setWidth(Math.round(w * scale));
         el.setHeight(Math.round(h * scale));
       }
+
+      body.appendParagraph("");
     });
   }
 

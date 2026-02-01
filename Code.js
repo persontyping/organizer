@@ -1,39 +1,4 @@
-/************ CONFIG ************/
 
-const CFG = {
-  sheetId: "1mI2yqnJDoW5P2gew9-UY0GFDtJ5O0lWN_-3UgZg7qak",
-  sheetTab: "MEM List",
-  outputRootFolderId: "1tueGbexvt4X6W8AEX_3LPpl3EcyoK8WY",
-
-  // slidesPackTemplateId: "1YlWjusS2iR-EwB0_oTxRFeC6ZtUuK5setxwK7iOKKYw",
-  slidesPackTemplateId: "1LaP06p5jIbvRJlaGLj8rUQoJ8R620zgDUO6Y3azTOHo",
-  docTemplateId: "1Ox9GvFCQatC7sL7airoWFcADE_mU375a_pHH0ANF3l8",
-
-  stateKey: "DRAFTS_SEEN_URL_HASHES_V1",
-
-  inboxLabel: "MEM",
-  processedLabel: "MEM/Closed",
-
-  lookbackHours: 720,
-  maxThreadsPerRun: 30,
-  notifyEmail: Session.getActiveUser().getEmail(),
-  debug: true,
-};
-
-const SHEET_HEADERS = [
-  "AddedAt",
-  "Type",
-  "Title",
-  "AuthorOrBrand",
-  "Link",
-  "Notes",
-  "IGCaption",
-  "IGHashtags",
-  "IGStatus",
-  "IGDraftedAt",
-  "SourceEmailSubject",
-  "PackFolder"
-];
 
 
 /************ MAIN ************/

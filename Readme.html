@@ -1,0 +1,53 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <base target="_top">
+  </head>
+  <body>
+    How you’ll use it day-to-day
+
+Email yourself (or forward) something and label it Draft Inbox.
+
+For books (best results)
+
+Subject: Book: The Dispossessed
+Body:
+
+Type: Book
+Title: The Dispossessed
+Author: Ursula K. Le Guin
+Notes: Heard it’s a sharp political sci-fi / utopia critique.
+https://example.com
+
+For anything else
+
+Subject: Cool lamp for cabin
+Body:
+
+Type: Thing
+Notes: warm industrial vibe, might copy the design
+https://...
+
+
+The AI script will:
+
+add a row to ContentDrafts
+
+email you an IG caption + hashtags
+
+
+Subject flags like [B], [P], plus optional [FAST], [STORY], [DRAFT]
+
+Type override priority: Body overrides (Type:) > Subject flags > inferType_()
+
+Book posts keep your existing template
+
+Political posts can be AI-assisted by default (timely), or fall back to a template if AI is off
+
+Media saved into the per-email pack folder (you already do this)
+
+Email output includes the draft + pack folder links (you already do this)
+
+Below is exactly what to paste into each file + the few lines to change in draftScanInbox().
+  </body>
+</html>
